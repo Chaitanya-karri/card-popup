@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+
+  <title>AR Card Popup</title>
+
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image.prod.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    :root {
+      --bg: #09090b;
+      --panel: rgba(24, 24, 27, 0.94);
+      --border: rgba(255, 255, 255, 0.13);
+      --text: #ffffff;
+      --muted: #a1a1aa;
+      --accent: #8b5cf6;
+      --accent2: #06b6d4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      position: relative;
+    }
+
+    #ar-container {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 1;
+    }
+
+    #ar-container a-scene {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 18px 18px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.7),
+        rgba(0, 0, 0, 0)
+      );
+    }
+
+    .brand {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .status {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      color: #d4d4d8;
+    }
+
+    .status.ready {
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+
+    .status.error {
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .bottom-panel {
+      position: absolute;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      width: min(92%, 430px);
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--panel);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+
+    .title {
+      font-size: 21px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(
+        135deg,
+        var(--accent),
+        #6d28d9
+      );
+      box-shadow: 0 8px 25px rgba(139, 92, 246, 0.25);
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #permission-message {
+      display: none;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(90%, 400px);
+      padding: 22px;
+      border-radius: 22px;
+      text-align: center;
+      background: rgba(24, 24, 27, 0.97);
+      border: 1px solid var(--border);
+      pointer-events: auto;
+    }
+
+    #permission-message h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+
+    #permission-message p {
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+      margin: 0 0 18px;
+    }
+
+    .hint {
+      margin-top: 12px;
+      color: #71717a;
+      font-size: 11px;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    video.ar-video {
+      object-fit: contain;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 480px) {
+      .topbar {
+        padding: 14px 12px 10px;
+      }
+
+      .brand {
+        font-size: 15px;
+      }
+
+      .bottom-panel {
+        bottom: 12px;
+        padding: 15px;
+        border-radius: 20px;
+      }
+
+      .title {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="ar-container">
+    <a-scene
+      mindar-image="
+        imageTargetSrc: ./targets.mind;
+        autoStart: false;
+        uiLoading: no;
+        uiScanning: no;
+        uiError: no;
+        maxTrack: 1;
+        filterMinCF: 0.0001;
+        filterBeta: 0.001;
+      "
+      color-space="sRGB"
+      renderer="colorManagement: true; physicallyCorrectLights: true;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-assets>
+        
+        <video
+          id="video-0"
+          class="ar-video"
+          src="./assets/video_0.mp4"
+          preload="auto"
+          loop
+          muted
+          playsinline
+          webkit-playsinline
+          crossorigin="anonymous"
+        ></video>
+        
+      </a-assets>
+
+      <a-camera
+        position="0 0 0"
+        look-controls="enabled: false"
+        cursor="fuse: false; rayOrigin: mouse;"
+        raycaster="objects: .clickable"
+      ></a-camera>
+
+      
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-video
+          src="#video-0"
+          width="1"
+          height="0.5625"
+          position="0 0 0"
+          rotation="0 0 0"
+          material="shader: flat; transparent: true; opacity: 1"
+        ></a-video>
+      </a-entity>
+      
+    </a-scene>
+  </div>
+
+  <div class="overlay">
+    <div class="topbar">
+      <div class="brand">AR Card Popup</div>
+      <div id="status" class="status">Camera not started</div>
+    </div>
+
+    <div id="permission-message">
+      <h2>Camera Permission Required</h2>
+      <p>
+        Please allow camera access to scan your card and display
+        the AR video.
+      </p>
+      <button id="permission-close">Continue</button>
+    </div>
+
+    <div class="bottom-panel">
+      <div class="title" id="card-title">
+        Scan Your Card
+      </div>
+
+      <div class="description" id="card-description">
+        Press Start Camera, then point your camera at a supported
+        card image. The matching video will appear above the card.
+      </div>
+
+      <div class="button-row">
+        <button id="start-button">
+          Start Camera
+        </button>
+
+        <button
+          id="stop-button"
+          class="secondary"
+          disabled
+        >
+          Stop
+        </button>
+      </div>
+
+      <div class="hint">
+        Use HTTPS or GitHub Pages. Camera access may not work
+        from a normal HTTP page.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CARD_DATA = [{"id": 0, "title": "Card01 (4)", "image": "assets/card_0.jpg", "video": "assets/video_0.mp4"}];
+
+    const scene = document.querySelector("a-scene");
+    const startButton = document.getElementById("start-button");
+    const stopButton = document.getElementById("stop-button");
+    const statusElement = document.getElementById("status");
+    const cardTitle = document.getElementById("card-title");
+    const cardDescription = document.getElementById("card-description");
+    const permissionMessage = document.getElementById("permission-message");
+    const permissionClose = document.getElementById("permission-close");
+
+    let mindarSystem = null;
+    let activeTarget = null;
+    let started = false;
+
+    function setStatus(text, type = "") {
+      statusElement.textContent = text;
+      statusElement.className = "status";
+
+      if (type) {
+        statusElement.classList.add(type);
+      }
+    }
+
+    function stopAllVideos() {
+      document.querySelectorAll("video").forEach((video) => {
+        try {
+          video.pause();
+          video.currentTime = 0;
+        } catch (error) {
+          console.warn("Video stop error:", error);
+        }
+      });
+    }
+
+    function updateCardInfo(targetIndex) {
+      const card = CARD_DATA.find(
+        (item) => Number(item.id) === Number(targetIndex)
+      );
+
+      if (card) {
+        cardTitle.textContent = card.title;
+        cardDescription.textContent =
+          "AR content detected. Keep the card inside the camera frame.";
+      }
+    }
+
+    scene.addEventListener("loaded", () => {
+      console.log("A-Frame scene loaded.");
+      mindarSystem = scene.systems["mindar-image"];
+
+      if (!mindarSystem) {
+        setStatus("MindAR unavailable", "error");
+        return;
+      }
+
+      setStatus("Ready to scan", "ready");
+    });
+
+    scene.addEventListener("arReady", () => {
+      console.log("AR camera ready.");
+      setStatus("Point camera at card", "ready");
+    });
+
+    scene.addEventListener("arError", (event) => {
+      console.error("AR error:", event);
+      setStatus("Camera error", "error");
+    });
+
+    scene.addEventListener("targetFound", (event) => {
+      const targetIndex = event.target.getAttribute(
+        "mindar-image-target"
+      );
+
+      activeTarget = targetIndex;
+      updateCardInfo(targetIndex);
+
+      const video = document.getElementById(
+        "video-" + targetIndex
+      );
+
+      if (video) {
+        video.muted = true;
+        video.playsInline = true;
+
+        video.play().catch((error) => {
+          console.warn("Autoplay blocked:", error);
+        });
+      }
+
+      setStatus("Card detected", "ready");
+    });
+
+    scene.addEventListener("targetLost", (event) => {
+      const targetIndex = event.target.getAttribute(
+        "mindar-image-target"
+      );
+
+      const video = document.getElementById(
+        "video-" + targetIndex
+      );
+
+      if (video) {
+        video.pause();
+      }
+
+      activeTarget = null;
+      cardTitle.textContent = "Scan Your Card";
+      cardDescription.textContent =
+        "Point your camera at a supported card image.";
+      setStatus("Searching for card", "ready");
+    });
+
+    startButton.addEventListener("click", async () => {
+      try {
+        if (!mindarSystem) {
+          mindarSystem = scene.systems["mindar-image"];
+        }
+
+        if (!mindarSystem) {
+          setStatus("MindAR is not loaded", "error");
+          return;
+        }
+
+        stopAllVideos();
+
+        await mindarSystem.start();
+
+        started = true;
+        startButton.disabled = true;
+        stopButton.disabled = false;
+
+        setStatus("Point camera at card", "ready");
+      } catch (error) {
+        console.error("Camera start error:", error);
+
+        permissionMessage.style.display = "block";
+        setStatus("Camera permission needed", "error");
+      }
+    });
+
+    stopButton.addEventListener("click", async () => {
+      try {
+        stopAllVideos();
+
+        if (mindarSystem) {
+          await mindarSystem.stop();
+        }
+
+        started = false;
+        startButton.disabled = false;
+        stopButton.disabled = true;
+
+        setStatus("Camera stopped");
+        cardTitle.textContent = "Scan Your Card";
+        cardDescription.textContent =
+          "Press Start Camera to begin scanning.";
+      } catch (error) {
+        console.error("Camera stop error:", error);
+      }
+    });
+
+    permissionClose.addEventListener("click", () => {
+      permissionMessage.style.display = "none";
+    });
+
+    window.addEventListener("beforeunload", () => {
+      stopAllVideos();
+
+      try {
+        if (mindarSystem) {
+          mindarSystem.stop();
+        }
+      } catch (error) {
+        console.warn(error);
+      }
+    });
+  </script>
+</body>
+</html>
